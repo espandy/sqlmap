@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import codecs
@@ -20,9 +20,9 @@ def profile(profileOutputFile=None, dotOutputFile=None, imageOutputFile=None):
     """
 
     try:
+        __import__("gobject")
         from thirdparty.gprof2dot import gprof2dot
         from thirdparty.xdot import xdot
-        import gobject
         import gtk
         import pydot
     except ImportError, e:
@@ -50,7 +50,7 @@ def profile(profileOutputFile=None, dotOutputFile=None, imageOutputFile=None):
     if os.path.exists(imageOutputFile):
         os.remove(imageOutputFile)
 
-    infoMsg = "profiling the execution into file %s" % profileOutputFile
+    infoMsg = "profiling the execution into file '%s'" % profileOutputFile
     logger.info(infoMsg)
 
     # Start sqlmap main function and generate a raw profile file
@@ -80,15 +80,20 @@ def profile(profileOutputFile=None, dotOutputFile=None, imageOutputFile=None):
     if isinstance(pydotGraph, list):
         pydotGraph = pydotGraph[0]
 
-    pydotGraph.write_png(imageOutputFile)
+    try:
+        pydotGraph.write_png(imageOutputFile)
+    except OSError:
+        errMsg = "profiling requires graphviz installed "
+        errMsg += "(Hint: 'sudo apt-get install graphviz')"
+        logger.error(errMsg)
+    else:
+        infoMsg = "displaying interactive graph with xdot library"
+        logger.info(infoMsg)
 
-    infoMsg = "displaying interactive graph with xdot library"
-    logger.info(infoMsg)
-
-    # Display interactive Graphviz dot file by using extra/xdot/xdot.py
-    # http://code.google.com/p/jrfonseca/wiki/XDot
-    win = xdot.DotWindow()
-    win.connect('destroy', gtk.main_quit)
-    win.set_filter("dot")
-    win.open_file(dotOutputFile)
-    gtk.main()
+        # Display interactive Graphviz dot file by using extra/xdot/xdot.py
+        # http://code.google.com/p/jrfonseca/wiki/XDot
+        win = xdot.DotWindow()
+        win.connect('destroy', gtk.main_quit)
+        win.set_filter("dot")
+        win.open_file(dotOutputFile)
+        gtk.main()

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import os
+import re
 
 from xml.etree import ElementTree as et
 
@@ -17,6 +18,9 @@ from lib.core.exception import SqlmapInstallationException
 from lib.core.settings import PAYLOAD_XML_FILES
 
 def cleanupVals(text, tag):
+    if tag == "clause" and '-' in text:
+        text = re.sub(r"(\d+)-(\d+)", lambda match: ','.join(str(_) for _ in xrange(int(match.group(1)), int(match.group(2)) + 1)), text)
+
     if tag in ("clause", "where"):
         text = text.split(',')
 
@@ -36,7 +40,7 @@ def cleanupVals(text, tag):
     return text
 
 def parseXmlNode(node):
-    for element in node.getiterator('boundary'):
+    for element in node.getiterator("boundary"):
         boundary = AttribDict()
 
         for child in element.getchildren():
@@ -48,7 +52,7 @@ def parseXmlNode(node):
 
         conf.boundaries.append(boundary)
 
-    for element in node.getiterator('test'):
+    for element in node.getiterator("test"):
         test = AttribDict()
 
         for child in element.getchildren():
@@ -78,7 +82,7 @@ def loadBoundaries():
         errMsg = "something appears to be wrong with "
         errMsg += "the file '%s' ('%s'). Please make " % (paths.BOUNDARIES_XML, getSafeExString(ex))
         errMsg += "sure that you haven't made any changes to it"
-        raise SqlmapInstallationException, errMsg
+        raise SqlmapInstallationException(errMsg)
 
     root = doc.getroot()
     parseXmlNode(root)
@@ -93,7 +97,7 @@ def loadPayloads():
             errMsg = "something appears to be wrong with "
             errMsg += "the file '%s' ('%s'). Please make " % (payloadFilePath, getSafeExString(ex))
             errMsg += "sure that you haven't made any changes to it"
-            raise SqlmapInstallationException, errMsg
+            raise SqlmapInstallationException(errMsg)
 
         root = doc.getroot()
         parseXmlNode(root)

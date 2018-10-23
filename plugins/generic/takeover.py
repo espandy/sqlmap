@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import os
@@ -125,8 +125,7 @@ class Takeover(Abstraction, Metasploit, ICMPsh, Registry, Miscellaneous):
                 raise SqlmapMissingPrivileges(errMsg)
 
             try:
-                from impacket import ImpactDecoder
-                from impacket import ImpactPacket
+                __import__("impacket")
             except ImportError:
                 errMsg = "sqlmap requires 'python-impacket' third-party library "
                 errMsg += "in order to run icmpsh master. You can get it at "
@@ -372,7 +371,7 @@ class Takeover(Abstraction, Metasploit, ICMPsh, Registry, Miscellaneous):
         else:
             regVal = conf.regVal
 
-        infoMsg = "reading Windows registry path '%s\%s' " % (regKey, regVal)
+        infoMsg = "reading Windows registry path '%s\\%s' " % (regKey, regVal)
         logger.info(infoMsg)
 
         return self.readRegKey(regKey, regVal, True)
@@ -417,7 +416,7 @@ class Takeover(Abstraction, Metasploit, ICMPsh, Registry, Miscellaneous):
         else:
             regType = conf.regType
 
-        infoMsg = "adding Windows registry path '%s\%s' " % (regKey, regVal)
+        infoMsg = "adding Windows registry path '%s\\%s' " % (regKey, regVal)
         infoMsg += "with data '%s'. " % regData
         infoMsg += "This will work only if the user running the database "
         infoMsg += "process has privileges to modify the Windows registry."
@@ -449,12 +448,12 @@ class Takeover(Abstraction, Metasploit, ICMPsh, Registry, Miscellaneous):
             regVal = conf.regVal
 
         message = "are you sure that you want to delete the Windows "
-        message += "registry path '%s\%s? [y/N] " % (regKey, regVal)
+        message += "registry path '%s\\%s? [y/N] " % (regKey, regVal)
 
         if not readInput(message, default='N', boolean=True):
             return
 
-        infoMsg = "deleting Windows registry path '%s\%s'. " % (regKey, regVal)
+        infoMsg = "deleting Windows registry path '%s\\%s'. " % (regKey, regVal)
         infoMsg += "This will work only if the user running the database "
         infoMsg += "process has privileges to modify the Windows registry."
         logger.info(infoMsg)

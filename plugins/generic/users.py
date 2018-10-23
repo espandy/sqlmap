@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import re
@@ -19,7 +19,6 @@ from lib.core.common import isNoneValue
 from lib.core.common import isNumPosStrValue
 from lib.core.common import isTechniqueAvailable
 from lib.core.common import parsePasswordHash
-from lib.core.common import randomStr
 from lib.core.common import readInput
 from lib.core.common import unArrayizeValue
 from lib.core.convert import hexencode
@@ -165,7 +164,7 @@ class Users:
 
             if Backend.isDbms(DBMS.MYSQL):
                 for user in users:
-                    parsedUser = re.search("[\047]*(.*?)[\047]*\@", user)
+                    parsedUser = re.search(r"['\"]?(.*?)['\"]?\@", user)
 
                     if parsedUser:
                         users[users.index(user)] = parsedUser.groups()[0]
@@ -187,13 +186,12 @@ class Users:
                 query += " OR ".join("%s = '%s'" % (condition, user) for user in sorted(users))
 
             if Backend.isDbms(DBMS.SYBASE):
-                randStr = randomStr()
                 getCurrentThreadData().disableStdOut = True
 
-                retVal = pivotDumpTable("(%s) AS %s" % (query, randStr), ['%s.name' % randStr, '%s.password' % randStr], blind=False)
+                retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName, '%s.password' % kb.aliasName], blind=False)
 
                 if retVal:
-                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % randStr], retVal[0]["%s.password" % randStr])):
+                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
                         if user not in kb.data.cachedUsersPasswords:
                             kb.data.cachedUsersPasswords[user] = [password]
                         else:
@@ -220,7 +218,7 @@ class Users:
 
                 if Backend.isDbms(DBMS.MYSQL):
                     for user in users:
-                        parsedUser = re.search("[\047]*(.*?)[\047]*\@", user)
+                        parsedUser = re.search(r"['\"]?(.*?)['\"]?\@", user)
 
                         if parsedUser:
                             users[users.index(user)] = parsedUser.groups()[0]
@@ -228,14 +226,13 @@ class Users:
             if Backend.isDbms(DBMS.SYBASE):
                 getCurrentThreadData().disableStdOut = True
 
-                randStr = randomStr()
                 query = rootQuery.inband.query
 
-                retVal = pivotDumpTable("(%s) AS %s" % (query, randStr), ['%s.name' % randStr, '%s.password' % randStr], blind=True)
+                retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName, '%s.password' % kb.aliasName], blind=True)
 
                 if retVal:
-                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % randStr], retVal[0]["%s.password" % randStr])):
-                        password = "0x%s" % hexencode(password).upper()
+                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
+                        password = "0x%s" % hexencode(password, conf.encoding).upper()
 
                         if user not in kb.data.cachedUsersPasswords:
                             kb.data.cachedUsersPasswords[user] = [password]
@@ -307,9 +304,9 @@ class Users:
 
         if not kb.data.cachedUsersPasswords:
             errMsg = "unable to retrieve the password hashes for the "
-            errMsg += "database users (probably because the session "
-            errMsg += "user has no read privileges over the relevant "
-            errMsg += "system database table)"
+            errMsg += "database users (probably because the DBMS "
+            errMsg += "current user has no read privileges over the relevant "
+            errMsg += "system database table(s))"
             logger.error(errMsg)
         else:
             for user in kb.data.cachedUsersPasswords:
@@ -349,7 +346,7 @@ class Users:
 
             if Backend.isDbms(DBMS.MYSQL):
                 for user in users:
-                    parsedUser = re.search("[\047]*(.*?)[\047]*\@", user)
+                    parsedUser = re.search(r"['\"]?(.*?)['\"]?\@", user)
 
                     if parsedUser:
                         users[users.index(user)] = parsedUser.groups()[0]
@@ -393,7 +390,7 @@ class Users:
                     user = None
                     privileges = set()
 
-                    for count in xrange(0, len(value)):
+                    for count in xrange(0, len(value or [])):
                         # The first column is always the username
                         if count == 0:
                             user = value[count]
@@ -424,7 +421,8 @@ class Users:
 
                             # In Firebird we get one letter for each privilege
                             elif Backend.isDbms(DBMS.FIREBIRD):
-                                privileges.add(FIREBIRD_PRIVS[privilege.strip()])
+                                if privilege.strip() in FIREBIRD_PRIVS:
+                                    privileges.add(FIREBIRD_PRIVS[privilege.strip()])
 
                             # In DB2 we get Y or G if the privilege is
                             # True, N otherwise
@@ -462,7 +460,7 @@ class Users:
 
                 if Backend.isDbms(DBMS.MYSQL):
                     for user in users:
-                        parsedUser = re.search("[\047]*(.*?)[\047]*\@", user)
+                        parsedUser = re.search(r"['\"]?(.*?)['\"]?\@", user)
 
                         if parsedUser:
                             users[users.index(user)] = parsedUser.groups()[0]

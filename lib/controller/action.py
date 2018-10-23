@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 from lib.controller.handler import setHandler
@@ -140,11 +140,11 @@ def action():
         conf.dbmsHandler.udfInjectCustom()
 
     # File system options
-    if conf.rFile:
-        conf.dumper.rFile(conf.dbmsHandler.readFile(conf.rFile))
+    if conf.fileRead:
+        conf.dumper.rFile(conf.dbmsHandler.readFile(conf.fileRead))
 
-    if conf.wFile:
-        conf.dbmsHandler.writeFile(conf.wFile, conf.dFile, conf.wFileType)
+    if conf.fileWrite:
+        conf.dbmsHandler.writeFile(conf.fileWrite, conf.fileDest, conf.fileWriteType)
 
     # Operating system options
     if conf.osCmd:

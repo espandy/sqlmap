@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import re
@@ -88,6 +88,7 @@ class Custom:
             try:
                 query = raw_input("sql-shell> ")
                 query = getUnicode(query, encoding=sys.stdin.encoding)
+                query = query.strip("; ")
             except KeyboardInterrupt:
                 print
                 errMsg = "user aborted"

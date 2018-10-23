@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 try:
     import cx_Oracle
-except ImportError:
+except:
     pass
 
 import logging
 import os
+import re
 
 from lib.core.convert import utf8encode
 from lib.core.data import conf
@@ -23,10 +24,10 @@ os.environ["NLS_LANG"] = ".AL32UTF8"
 
 class Connector(GenericConnector):
     """
-    Homepage: http://cx-oracle.sourceforge.net/
-    User guide: http://cx-oracle.sourceforge.net/README.txt
-    API: http://cx-oracle.sourceforge.net/html/index.html
-    License: http://cx-oracle.sourceforge.net/LICENSE.txt
+    Homepage: https://oracle.github.io/python-cx_Oracle/
+    User https://cx-oracle.readthedocs.io/en/latest/
+    API: https://wiki.python.org/moin/DatabaseProgramming
+    License: https://cx-oracle.readthedocs.io/en/latest/license.html#license
     """
 
     def __init__(self):
@@ -42,7 +43,13 @@ class Connector(GenericConnector):
         try:
             self.connector = cx_Oracle.connect(dsn=self.__dsn, user=self.user, password=self.password, mode=cx_Oracle.SYSDBA)
             logger.info("successfully connected as SYSDBA")
-        except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError):
+        except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError), ex:
+            if "Oracle Client library" in str(ex):
+                msg = re.sub(r"DPI-\d+:\s+", "", str(ex))
+                msg = re.sub(r': ("[^"]+")', r" (\g<1>)", msg)
+                msg = re.sub(r". See (http[^ ]+)", r'. See "\g<1>"', msg)
+                raise SqlmapConnectionException(msg)
+
             try:
                 self.connector = cx_Oracle.connect(dsn=self.__dsn, user=self.user, password=self.password)
             except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError), msg:

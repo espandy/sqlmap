@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import os
@@ -108,7 +108,7 @@ class UDF:
         return output
 
     def udfCheckNeeded(self):
-        if (not conf.rFile or (conf.rFile and not Backend.isDbms(DBMS.PGSQL))) and "sys_fileread" in self.sysUdfs:
+        if (not conf.fileRead or (conf.fileRead and not Backend.isDbms(DBMS.PGSQL))) and "sys_fileread" in self.sysUdfs:
             self.sysUdfs.pop("sys_fileread")
 
         if not conf.osPwn:
@@ -195,7 +195,7 @@ class UDF:
 
         if not self.isDba():
             warnMsg = "functionality requested probably does not work because "
-            warnMsg += "the curent session user is not a database administrator"
+            warnMsg += "the current session user is not a database administrator"
             logger.warn(warnMsg)
 
         if not conf.shLib:

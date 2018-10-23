@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import cgi
@@ -46,6 +46,8 @@ from lib.core.settings import METADB_SUFFIX
 from lib.core.settings import MIN_BINARY_DISK_DUMP_SIZE
 from lib.core.settings import TRIM_STDOUT_DUMP_SIZE
 from lib.core.settings import UNICODE_ENCODING
+from lib.core.settings import UNSAFE_DUMP_FILEPATH_REPLACEMENT
+from lib.core.settings import VERSION_STRING
 from lib.core.settings import WINDOWS_RESERVED_NAMES
 from thirdparty.magic import magic
 
@@ -140,7 +142,7 @@ class Dump(object):
             try:
                 elements = set(elements)
                 elements = list(elements)
-                elements.sort(key=lambda x: x.lower() if isinstance(x, basestring) else x)
+                elements.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
             except:
                 pass
 
@@ -169,7 +171,7 @@ class Dump(object):
     def currentDb(self, data):
         if Backend.isDbms(DBMS.MAXDB):
             self.string("current database (no practical usage on %s)" % Backend.getIdentifiedDbms(), data, content_type=CONTENT_TYPE.CURRENT_DB)
-        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.PGSQL, DBMS.HSQLDB):
+        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2):
             self.string("current schema (equivalent to database on %s)" % Backend.getIdentifiedDbms(), data, content_type=CONTENT_TYPE.CURRENT_DB)
         else:
             self.string("current database", data, content_type=CONTENT_TYPE.CURRENT_DB)
@@ -191,7 +193,7 @@ class Dump(object):
             userSettings = userSettings[0]
 
         users = userSettings.keys()
-        users.sort(key=lambda x: x.lower() if isinstance(x, basestring) else x)
+        users.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
 
         if conf.api:
             self._write(userSettings, content_type=content_type)
@@ -285,7 +287,7 @@ class Dump(object):
                     colType = None
 
                     colList = columns.keys()
-                    colList.sort(key=lambda x: x.lower() if isinstance(x, basestring) else x)
+                    colList.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
 
                     for column in colList:
                         colType = columns[column]
@@ -377,7 +379,7 @@ class Dump(object):
                     if count is None:
                         count = "Unknown"
 
-                    tables.sort(key=lambda x: x.lower() if isinstance(x, basestring) else x)
+                    tables.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
 
                     for table in tables:
                         blank1 = " " * (maxlength1 - len(normalizeUnicode(table) or unicode(table)))
@@ -414,16 +416,16 @@ class Dump(object):
         elif conf.dumpFormat in (DUMP_FORMAT.CSV, DUMP_FORMAT.HTML):
             if not os.path.isdir(dumpDbPath):
                 try:
-                    os.makedirs(dumpDbPath, 0755)
+                    os.makedirs(dumpDbPath)
                 except:
                     warnFile = True
 
-                    _ = unicodeencode(re.sub(r"[^\w]", "_", unsafeSQLIdentificatorNaming(db)))
+                    _ = unicodeencode(re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(db)))
                     dumpDbPath = os.path.join(conf.dumpPath, "%s-%s" % (_, hashlib.md5(unicodeencode(db)).hexdigest()[:8]))
 
                     if not os.path.isdir(dumpDbPath):
                         try:
-                            os.makedirs(dumpDbPath, 0755)
+                            os.makedirs(dumpDbPath)
                         except Exception, ex:
                             try:
                                 tempDir = tempfile.mkdtemp(prefix="sqlmapdb")
@@ -441,7 +443,7 @@ class Dump(object):
 
                             dumpDbPath = tempDir
 
-            dumpFileName = os.path.join(dumpDbPath, "%s.%s" % (unsafeSQLIdentificatorNaming(table), conf.dumpFormat.lower()))
+            dumpFileName = os.path.join(dumpDbPath, re.sub(r'[\\/]', UNSAFE_DUMP_FILEPATH_REPLACEMENT, "%s.%s" % (unsafeSQLIdentificatorNaming(table), conf.dumpFormat.lower())))
             if not checkFile(dumpFileName, False):
                 try:
                     openFile(dumpFileName, "w+b").close()
@@ -450,9 +452,9 @@ class Dump(object):
                 except:
                     warnFile = True
 
-                    _ = re.sub(r"[^\w]", "_", normalizeUnicode(unsafeSQLIdentificatorNaming(table)))
+                    _ = re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, normalizeUnicode(unsafeSQLIdentificatorNaming(table)))
                     if len(_) < len(table) or IS_WIN and table.upper() in WINDOWS_RESERVED_NAMES:
-                        _ = unicodeencode(re.sub(r"[^\w]", "_", unsafeSQLIdentificatorNaming(table)))
+                        _ = unicodeencode(re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(table)))
                         dumpFileName = os.path.join(dumpDbPath, "%s-%s.%s" % (_, hashlib.md5(unicodeencode(table)).hexdigest()[:8], conf.dumpFormat.lower()))
                     else:
                         dumpFileName = os.path.join(dumpDbPath, "%s.%s" % (_, conf.dumpFormat.lower()))
@@ -531,6 +533,7 @@ class Dump(object):
         elif conf.dumpFormat == DUMP_FORMAT.HTML:
             dataToDumpFile(dumpFP, "<!DOCTYPE html>\n<html>\n<head>\n")
             dataToDumpFile(dumpFP, "<meta http-equiv=\"Content-type\" content=\"text/html;charset=%s\">\n" % UNICODE_ENCODING)
+            dataToDumpFile(dumpFP, "<meta name=\"generator\" content=\"%s\" />\n" % VERSION_STRING)
             dataToDumpFile(dumpFP, "<title>%s</title>\n" % ("%s%s" % ("%s." % db if METADB_SUFFIX not in db else "", table)))
             dataToDumpFile(dumpFP, HTML_DUMP_CSS_STYLE)
             dataToDumpFile(dumpFP, "\n</head>\n<body>\n<table>\n<thead>\n<tr>\n")
@@ -611,9 +614,9 @@ class Dump(object):
                             mimetype = magic.from_buffer(value, mime=True)
                             if any(mimetype.startswith(_) for _ in ("application", "image")):
                                 if not os.path.isdir(dumpDbPath):
-                                    os.makedirs(dumpDbPath, 0755)
+                                    os.makedirs(dumpDbPath)
 
-                                _ = re.sub(r"[^\w]", "_", normalizeUnicode(unsafeSQLIdentificatorNaming(column)))
+                                _ = re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, normalizeUnicode(unsafeSQLIdentificatorNaming(column)))
                                 filepath = os.path.join(dumpDbPath, "%s-%d.bin" % (_, randomInt(8)))
                                 warnMsg = "writing binary ('%s') content to file '%s' " % (mimetype, filepath)
                                 logger.warn(warnMsg)

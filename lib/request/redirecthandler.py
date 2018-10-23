@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
-import re
+import time
 import types
 import urllib2
 import urlparse
@@ -69,6 +69,7 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
         return urllib2.Request(newurl, data=req.data, headers=req.headers, origin_req_host=req.get_origin_req_host())
 
     def http_error_302(self, req, fp, code, msg, headers):
+        start = time.time()
         content = None
         redurl = self._get_header_redirect(headers) if not conf.ignoreRedirects else None
 
@@ -92,18 +93,18 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
         threadData.lastRedirectMsg = (threadData.lastRequestUID, content)
 
         redirectMsg = "HTTP redirect "
-        redirectMsg += "[#%d] (%d %s):\n" % (threadData.lastRequestUID, code, getUnicode(msg))
+        redirectMsg += "[#%d] (%d %s):\r\n" % (threadData.lastRequestUID, code, getUnicode(msg))
 
         if headers:
-            logHeaders = "\n".join("%s: %s" % (getUnicode(key.capitalize() if isinstance(key, basestring) else key), getUnicode(value)) for (key, value) in headers.items())
+            logHeaders = "\r\n".join("%s: %s" % (getUnicode(key.capitalize() if isinstance(key, basestring) else key), getUnicode(value)) for (key, value) in headers.items())
         else:
             logHeaders = ""
 
         redirectMsg += logHeaders
         if content:
-            redirectMsg += "\n\n%s" % getUnicode(content[:MAX_CONNECTION_CHUNK_SIZE])
+            redirectMsg += "\r\n\r\n%s" % getUnicode(content[:MAX_CONNECTION_CHUNK_SIZE])
 
-        logHTTPTraffic(threadData.lastRequestMsg, redirectMsg)
+        logHTTPTraffic(threadData.lastRequestMsg, redirectMsg, start, time.time())
         logger.log(CUSTOM_LOGGING.TRAFFIC_IN, redirectMsg)
 
         if redurl:
@@ -122,12 +123,21 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
 
             req.headers[HTTP_HEADER.HOST] = getHostHeader(redurl)
             if headers and HTTP_HEADER.SET_COOKIE in headers:
+                cookies = dict()
                 delimiter = conf.cookieDel or DEFAULT_COOKIE_DELIMITER
-                _ = headers[HTTP_HEADER.SET_COOKIE].split(delimiter)[0]
-                if HTTP_HEADER.COOKIE not in req.headers:
-                    req.headers[HTTP_HEADER.COOKIE] = _
-                else:
-                    req.headers[HTTP_HEADER.COOKIE] = re.sub("%s{2,}" % delimiter, delimiter, ("%s%s%s" % (re.sub(r"\b%s=[^%s]*%s?" % (_.split('=')[0], delimiter, delimiter), "", req.headers[HTTP_HEADER.COOKIE]), delimiter, _)).strip(delimiter))
+                last = None
+
+                for part in req.headers.get(HTTP_HEADER.COOKIE, "").split(delimiter) + headers.getheaders(HTTP_HEADER.SET_COOKIE):
+                    if '=' in part:
+                        part = part.strip()
+                        key, value = part.split('=', 1)
+                        cookies[key] = value
+                        last = key
+                    elif last:
+                        cookies[last] += "%s%s" % (delimiter, part)
+
+                req.headers[HTTP_HEADER.COOKIE] = delimiter.join("%s=%s" % (key, cookies[key]) for key in cookies)
+
             try:
                 result = urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, headers)
             except urllib2.HTTPError, e:

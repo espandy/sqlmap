@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import re
@@ -19,7 +19,9 @@ def detect(get_page):
         page, headers, _ = get_page(get=vector)
         retval = re.search(r"incap_ses|visid_incap", headers.get(HTTP_HEADER.SET_COOKIE, ""), re.I) is not None
         retval |= re.search(r"Incapsula", headers.get("X-CDN", ""), re.I) is not None
-        retval |= "Incapsula incident ID" in (page or "")
+        retval |= any(_ in (page or "") for _ in ("Incapsula incident ID", "_Incapsula_Resource?", "?subject=WAF Block Page:"))
+        retval |= all(_ in (page or "") for _ in ("Application Firewall Error", "If you feel you have been blocked in error, please contact Customer Support"))
+        retval |= headers.get("X-Iinfo") is not None
         if retval:
             break
 
